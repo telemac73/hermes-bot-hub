@@ -1,0 +1,7 @@
+[Unit]
+Description=Restart the Hermes gateway when a Hermes update left the old one running
+
+[Service]
+Type=oneshot
+ExecStart=%h/.hermes/bot-hub/gateway-watchdog.sh
+TimeoutStartSec=45min

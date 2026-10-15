@@ -395,6 +395,9 @@ def _live_for(agents: Optional[List[Dict[str, Any]]], profile: str) -> Optional[
         return {"status": "idle", "subagents": 0}
     if best is None:
         best = subs[0]
+    # a Hermes Kanban task one of its sessions is running (pixel-office tags kanban workers)
+    task = next((a.get("kanban") for a in sorted(mine, key=lambda a: a.get("updated_at") or 0, reverse=True)
+                 if isinstance(a.get("kanban"), dict) and a.get("status") in ("working", "thinking", "waiting")), None)
     return {
         "status": best.get("status") or "idle",
         "tool": best.get("tool") or "",
@@ -404,6 +407,7 @@ def _live_for(agents: Optional[List[Dict[str, Any]]], profile: str) -> Optional[
         "updated_at": best.get("updated_at"),
         "subagents": len(subs),
         "waiting": any(a.get("status") == "waiting" for a in mine),
+        "kanban": {"id": str(task.get("id") or ""), "title": str(task.get("title") or "")} if task else None,
     }
 
 

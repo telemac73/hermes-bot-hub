@@ -1,0 +1,10 @@
+[Unit]
+Description=Check every 10 minutes that the Hermes gateway matches the installed Hermes
+
+[Timer]
+# minutes 03, 13, 23…: adjust if your own cron jobs start at those minutes
+OnCalendar=*:03/10
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

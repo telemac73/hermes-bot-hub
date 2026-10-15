@@ -5,7 +5,7 @@ A [Hermes WebUI](https://github.com/nesquena/hermes-webui) extension that makes 
 spirit of xAI's Grok Bot. A **Bots** button in the WebUI's left rail opens it.
 
 - **Live roster** — one card per bot: face, role, model, status (needs you / working / available),
-  current tool, routines, channels. *Talk* opens the bot's latest thread.
+  current tool or Kanban task, routines, channels. *Talk* opens the bot's latest thread.
 - **Inbox** — every pending approval in one place, answered *once* or *deny* (never "always").
 - **New bot in one sentence** — describe the mission; the main profile designs and tests the bot with
   bot-forge in a thread you can follow.
@@ -107,6 +107,21 @@ Everything specific to one installation lives here (the installer creates it fro
 
 Loop guard, in code: a bot answering a teammate cannot ask anyone; nobody asks itself, anyone already in
 the chain, or the main profile. Plugin option `exclude` leaves profiles out of the team.
+
+## Optional: restart the gateway after Hermes updates
+
+After a Hermes update the running gateway keeps the old code; `hermes gateway status` then says it
+"cannot serve this Hermes" and cron jobs fail until someone restarts it. `extras/gateway-watchdog/`
+checks every 10 minutes and, only in that case and never during an update, runs Hermes' own graceful
+`hermes gateway restart`:
+
+```bash
+install -m 755 extras/gateway-watchdog/gateway-watchdog.sh ~/.hermes/bot-hub/
+cp extras/gateway-watchdog/hermes-gateway-watchdog.{service,timer} ~/.config/systemd/user/
+systemctl --user daemon-reload && systemctl --user enable --now hermes-gateway-watchdog.timer
+```
+
+It runs at minutes 03, 13, 23…; change `OnCalendar` in the timer if your own jobs start then.
 
 ## Safety notes
 

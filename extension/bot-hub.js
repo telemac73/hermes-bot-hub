@@ -428,6 +428,7 @@
       var running = mine.filter(function (s) { return s.is_streaming || s.active_stream_id || s.cron_running; });
       var liveBusy = live && (live.status === 'working' || live.status === 'thinking');
       var liveWaiting = live && (live.status === 'waiting' || live.waiting);
+      var task = live && live.kanban && live.kanban.title;  // a Hermes Kanban task it is running
 
       var st, label, detail = '';
       if (attention || liveWaiting) {
@@ -435,7 +436,8 @@
         var kind = attention && attention.attention.kind;
         label = kind === 'clarify' ? t('Has a question for you') : t('Waiting for your approval');
         var on = attention ? attention.title : (live && live.title);
-        if (on) detail = t('in “{title}”', { title: on });
+        if (!attention && task) detail = '📋 ' + task;
+        else if (on) detail = t('in “{title}”', { title: on });
         if (!attention && live && live.platform) detail = (detail ? detail + ' · ' : '') + 'via ' + live.platform;
       } else if (running.length || liveBusy) {
         st = 'working';
@@ -446,7 +448,8 @@
         var cur = running[0];
         if (cur && cur.cron_running) bits.push(t('routine running'));
         var title = (cur && cur.title) || (live && live.title);
-        if (title) bits.push(t('in “{title}”', { title: title }));
+        if (task && !(cur && cur.title)) bits.push('📋 ' + task);
+        else if (title) bits.push(t('in “{title}”', { title: title }));
         if (live && live.subagents) bits.push(many(live.subagents) ? t('+{n} sub-agents', { n: live.subagents }) : t('+{n} sub-agent', { n: live.subagents }));
         detail = bits.join(' · ');
       } else if (mine.length) {
