@@ -1,0 +1,22 @@
+name: bothub-team
+version: 1.0.0
+description: "Bot Hub — lets a bot ask a teammate (another Hermes profile on this install) one question and get the answer: list_team and ask_teammate. Loop guard in code: one relay at most, never back up the chain, never the main profile."
+author: Telemac (hermes-bot-hub)
+license: MIT
+homepage: https://github.com/telemac73/hermes-bot-hub
+kind: standalone
+requires_hermes: ">=0.21"
+python_dependencies:
+  - "pyyaml>=6,<7"
+provides_tools:
+  - list_team
+  - ask_teammate
+config_schema:
+  exclude:
+    type: list
+    default: []
+    description: Profiles left out of the team (for example test profiles).
+  timeout_seconds:
+    type: int
+    default: 600
+    description: How long ask_teammate waits for the teammate's answer.

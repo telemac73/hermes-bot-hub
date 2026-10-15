@@ -1,0 +1,17 @@
+[Unit]
+Description=Bot Hub sidecar (roster metadata and actions for the Hermes WebUI Bots extension)
+After=network.target
+
+[Service]
+Type=simple
+# install.sh fills the @…@ values in.
+Environment=HERMES_HOME=@HERMES_HOME@
+Environment=BOT_HUB_PORT=@PORT@
+Environment=HERMES_BIN=@HERMES_BIN@
+# A Python of its own (with PyYAML), so Hermes updates that replace their venvs never break the sidecar.
+ExecStart=@PYTHON@ -I @HERMES_HOME@/bot-hub/bot_hub_sidecar.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

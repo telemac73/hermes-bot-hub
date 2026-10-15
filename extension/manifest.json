@@ -1,0 +1,22 @@
+{
+  "id": "bot-hub",
+  "name": "Bot Hub",
+  "version": "2.1.0",
+  "description": "Team hub for Hermes bots, in the spirit of Grok Bot: live roster, approvals inbox, routines, team thread, per-bot faces and voices.",
+  "scripts": [
+    "bot-hub.js"
+  ],
+  "stylesheets": [
+    "bot-hub.css"
+  ],
+  "sidecar": {
+    "type": "loopback",
+    "origin": "http://127.0.0.1:17790",
+    "health_path": "/health"
+  },
+  "permissions": {
+    "storage": {
+      "owned": true
+    }
+  }
+}

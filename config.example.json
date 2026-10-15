@@ -1,0 +1,16 @@
+{
+  "language": "",
+  "voice": {
+    "enabled": false,
+    "provider": "bothub",
+    "command": ["python3", "/path/to/your/tts.py", "-f", "{input}", "-o", "{output}", "-v", "{voice}"],
+    "voices": [
+      ["Charon", "informative"],
+      ["Puck", "upbeat"],
+      ["Kore", "firm"]
+    ],
+    "default_voice": "Charon",
+    "timeout": 150,
+    "max_chars": 1200
+  }
+}
