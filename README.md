@@ -18,6 +18,15 @@ spirit of xAI's Grok Bot. A **Bots** button in the WebUI's left rail opens it.
 
 The interface is in English, or French when the WebUI is in French.
 
+![The roster: an approval waiting, three bots at work, one available](docs/roster.jpg)
+
+<p>
+  <img src="docs/edit-face.png" width="420" alt="Editing a bot: mood, shape, eyes, mouth">
+  <img src="docs/routines.png" width="420" alt="A bot's routines in plain words">
+</p>
+
+*Screenshots use a demo team.*
+
 ## How it fits together
 
 | Part | Where | Role |

@@ -80,7 +80,7 @@
     if (vars) s = s.replace(/\{(\w+)\}/g, function (m, k) { return vars[k] == null ? m : String(vars[k]); });
     return s;
   }
-  function locale() { return lang() === 'fr' ? 'fr' : undefined; }
+  function locale() { return lang() === 'fr' ? 'fr' : 'en'; }  // dates follow the hub's language
 
   // ── helpers ─────────────────────────────────────────────────────────────
   function esc(s) {
