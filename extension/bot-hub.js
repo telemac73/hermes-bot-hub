@@ -1106,16 +1106,28 @@
   function modelOptionsHtml(bot, groups) {
     var cur = bot.modelRaw || {};
     var found = false, html = '';
+    // Hermes' built-in catalogs lag behind the providers: also offer every model a bot already runs.
+    var inUse = {};
+    buildBots().forEach(function (b) {
+      var r = b.modelRaw || {};
+      if (r.provider && r.default) (inUse[r.provider] = inUse[r.provider] || []).push(String(r.default));
+    });
     (groups || []).forEach(function (g) {
       var prov = g.provider_id || g.id || '';
-      var opts = (g.models || []).map(function (m) {
+      var list = (g.models || []).concat(g.extra_models || []);  // the WebUI moves long catalogs' tail to extra_models
+      (inUse[prov] || []).forEach(function (mid) {
+        if (!list.some(function (m) { return sameModel(bareModel(typeof m === 'string' ? m : m.id, prov), mid); })) list.push(mid);
+      });
+      var opts = list.map(function (m) {
         var id = typeof m === 'string' ? m : m.id;
         var label = (typeof m === 'string' ? m : (m.label || m.id)) || id;
         var sel = !found && prov === cur.provider && sameModel(bareModel(id, prov), cur.default);
         if (sel) found = true;
         return '<option value="' + esc(prov + '||' + id) + '"' + (sel ? ' selected' : '') + '>' + esc(label) + '</option>';
       }).join('');
-      if (opts) html += '<optgroup label="' + esc(g.provider || prov) + '">' + opts + '</optgroup>';
+      var glabel = (g.provider || prov) + (/^custom:/.test(prov) ? ' (' + t('custom endpoint') + ')' : '');
+      if (opts) html += '<optgroup label="' + esc(glabel) + '">' + opts +
+        '<option value="' + esc(prov + '||__other__') + '">' + t('Other {provider} model…', { provider: esc(g.provider || prov) }) + '</option></optgroup>';
     });
     var keep = '<option value="__keep__"' + (found ? '' : ' selected') + '>' + t('Current: {model}', { model: esc(cur.default || '?') }) + (cur.provider ? ' (' + esc(cur.provider) + ')' : '') + '</option>';
     return keep + html;
@@ -1283,6 +1295,7 @@
         '<label class="bh-field"><span>' + t('Role') + '</span><input name="bh-erole" type="text" maxlength="80" placeholder="' + t('E.g. Crypto Watcher') + '" value="' + esc(bot.roleTitle) + '"></label></div>' +
       '<label class="bh-field"><span>' + t('Mission (short description, also used for delegation)') + '</span><textarea name="bh-edesc" rows="2" maxlength="400">' + esc(bot.description) + '</textarea></label>' +
       '<label class="bh-field"><span>' + t('Model') + '</span><select name="bh-emodel" id="bhEditModel"><option value="__keep__">' + t('Loading models…') + '</option></select></label>' +
+      '<label class="bh-field" id="bhEditModelOther" hidden><span>' + t('Model id, exactly as the provider names it') + '</span><input name="bh-emodel-other" type="text" maxlength="120" autocomplete="off" spellcheck="false" placeholder="' + t('E.g. MiniMax-M3.1-Flash') + '"></label>' +
       (VOICES.length ? '<div class="bh-field-row bh-voice-row"><label class="bh-field"><span>' + t('Voice (spoken replies)') + '</span><select name="bh-evoice">' + voiceOptionsHtml(modal.voice) + '</select></label>' +
         '<button type="button" class="bh-btn" data-bh-voice-test>▶ ' + t('Listen') + '</button></div>' : '') +
       (isLead ? '' : '<label class="bh-check"><input type="checkbox" name="bh-ehidden"' + (bot.hiddenFlag ? ' checked' : '') + '> ' + t('Hide this bot in Bot Hub and in the team') + '</label>') +
@@ -1364,6 +1377,10 @@
     var m = val('bh-emodel');
     if (m && m !== '__keep__') {
       var parts = m.split('||'), prov = parts[0], id = parts.slice(1).join('||');
+      if (id === '__other__') {
+        id = (val('bh-emodel-other') || '').trim();
+        if (!id) { toast(t('Type the model id, or pick a model in the list'), 'error'); return; }
+      }
       var cur = bot.modelRaw || {};
       if (!(prov === cur.provider && sameModel(bareModel(id, prov), cur.default))) payload.model = { provider: prov, id: id };
     }
@@ -1619,6 +1636,15 @@
   }
 
   function onChange(ev) {
+    var msel = ev.target.closest && ev.target.closest('#bhModal [name=bh-emodel]');
+    if (msel) {
+      var box = document.getElementById('bhEditModelOther');
+      if (box) {
+        box.hidden = !/\|\|__other__$/.test(msel.value);
+        if (!box.hidden) { var inp = box.querySelector('input'); if (inp) inp.focus(); }
+      }
+      return;
+    }
     var sel = ev.target.closest && ev.target.closest('#bhModal [name=bh-when]');
     if (!sel) return;
     document.querySelectorAll('#bhModal [data-bh-when-for]').forEach(function (el) {
@@ -1974,6 +2000,11 @@
     'E.g. Crypto Watcher': 'Ex. : Veilleur Crypto',
     'Mission (short description, also used for delegation)': 'Mission (description courte, sert aussi à la délégation)',
     'Loading models…': 'Chargement des modèles…',
+    'Other {provider} model…': 'Autre modèle {provider}…',
+    'custom endpoint': 'point d’accès perso',
+    'Model id, exactly as the provider names it': 'Identifiant du modèle, exactement comme chez le fournisseur',
+    'E.g. MiniMax-M3.1-Flash': 'Ex. MiniMax-M3.1-Flash',
+    'Type the model id, or pick a model in the list': 'Tape l’identifiant du modèle, ou choisis un modèle dans la liste',
     'Voice (spoken replies)': 'Voix (réponses vocales)',
     'Hide this bot in Bot Hub and in the team': "Masquer ce bot dans Bot Hub et dans l'équipe",
     'Main profile: the name, role and face change how it is displayed (Bot Hub, Pixel Office); its personality only changes if you edit the SOUL below.':
