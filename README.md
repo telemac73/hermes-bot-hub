@@ -12,7 +12,8 @@ spirit of xAI's Grok Bot. A **Bots** button in the WebUI's left rail opens it.
 - **Routines** — the bot's cron jobs in plain words: run, pause, resume, add with a guided schedule.
 - **Team thread** — a pinned conversation where the main profile splits work across the bots.
 - **Edit a bot** — name, role, mission, model, face (shape, eyes, mouth, colour, 12 moods), full
-  `SOUL.md`, voice, hide; delete with a typed confirmation and an archive first.
+  `SOUL.md`, voice, hide; delete with a typed confirmation and an archive first. The model list is
+  the WebUI's full catalog with a filter box, plus *Other model…* for an id Hermes does not list yet.
 - **Voices** (optional) — one voice per bot for spoken replies, also as a WebUI speech engine.
 - **Bots asking each other** (optional plugin) — `list_team` / `ask_teammate`, with the loop guard in code.
 
@@ -122,6 +123,9 @@ systemctl --user daemon-reload && systemctl --user enable --now hermes-gateway-w
 ```
 
 It runs at minutes 03, 13, 23…; change `OnCalendar` in the timer if your own jobs start then.
+A run costs a few milliseconds: it only asks Hermes (seconds of CPU) after the checkout moved, the
+gateway restarted, or a new day began. `HERMES_GATEWAY_UNIT` names the gateway's user unit if it is
+not `hermes-gateway`.
 
 ## Safety notes
 

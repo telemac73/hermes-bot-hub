@@ -1103,9 +1103,10 @@
     var tail = function (x) { return String(x || '').toLowerCase().split('/').pop().replace(/\./g, '-'); };
     return tail(a) === tail(b);
   }
-  function modelOptionsHtml(bot, groups) {
+  function modelOptionsHtml(bot, groups, filter) {
     var cur = bot.modelRaw || {};
     var found = false, html = '';
+    var words = String(filter || '').toLowerCase().split(/\s+/).filter(Boolean);
     // Hermes' built-in catalogs lag behind the providers: also offer every model a bot already runs.
     var inUse = {};
     buildBots().forEach(function (b) {
@@ -1118,19 +1119,37 @@
       (inUse[prov] || []).forEach(function (mid) {
         if (!list.some(function (m) { return sameModel(bareModel(typeof m === 'string' ? m : m.id, prov), mid); })) list.push(mid);
       });
+      var glabel = (g.provider || prov) + (/^custom:/.test(prov) ? ' (' + t('custom endpoint') + ')' : '');
       var opts = list.map(function (m) {
         var id = typeof m === 'string' ? m : m.id;
         var label = (typeof m === 'string' ? m : (m.label || m.id)) || id;
         var sel = !found && prov === cur.provider && sameModel(bareModel(id, prov), cur.default);
         if (sel) found = true;
+        else if (words.length) {  // the bot's current model always stays in the list
+          var hay = (label + ' ' + id + ' ' + glabel).toLowerCase();
+          if (!words.every(function (w) { return hay.indexOf(w) >= 0; })) return '';
+        }
         return '<option value="' + esc(prov + '||' + id) + '"' + (sel ? ' selected' : '') + '>' + esc(label) + '</option>';
       }).join('');
-      var glabel = (g.provider || prov) + (/^custom:/.test(prov) ? ' (' + t('custom endpoint') + ')' : '');
       if (opts) html += '<optgroup label="' + esc(glabel) + '">' + opts +
         '<option value="' + esc(prov + '||__other__') + '">' + t('Other {provider} model…', { provider: esc(g.provider || prov) }) + '</option></optgroup>';
     });
     var keep = '<option value="__keep__"' + (found ? '' : ' selected') + '>' + t('Current: {model}', { model: esc(cur.default || '?') }) + (cur.provider ? ' (' + esc(cur.provider) + ')' : '') + '</option>';
     return keep + html;
+  }
+  function syncModelOther(sel) {  // the free-text id field only shows for "Other … model…"
+    var box = document.getElementById('bhEditModelOther');
+    if (!box) return false;
+    box.hidden = !/\|\|__other__$/.test(sel.value);
+    return !box.hidden;
+  }
+  function filterModels(q) {
+    var sel = document.getElementById('bhEditModel'), bot = modal && findBot(modal.bot);
+    if (!sel || !bot) return;
+    var prev = sel.value;
+    sel.innerHTML = modelOptionsHtml(bot, modal.modelGroups || [], q);
+    if ([].some.call(sel.options, function (o) { return o.value === prev; })) sel.value = prev;
+    syncModelOther(sel);
   }
   function randomSeed() { return Math.random().toString(36).slice(2, 10).replace(/[^a-z0-9]/g, '') || 'bot1'; }
   // ── face editor: shape, mood, eyes, mouth, colour ───────────────────────
@@ -1294,7 +1313,9 @@
       '<div class="bh-field-row"><label class="bh-field"><span>' + t('Name') + '</span><input name="bh-ename" type="text" maxlength="40" value="' + esc(bot.display) + '"></label>' +
         '<label class="bh-field"><span>' + t('Role') + '</span><input name="bh-erole" type="text" maxlength="80" placeholder="' + t('E.g. Crypto Watcher') + '" value="' + esc(bot.roleTitle) + '"></label></div>' +
       '<label class="bh-field"><span>' + t('Mission (short description, also used for delegation)') + '</span><textarea name="bh-edesc" rows="2" maxlength="400">' + esc(bot.description) + '</textarea></label>' +
-      '<label class="bh-field"><span>' + t('Model') + '</span><select name="bh-emodel" id="bhEditModel"><option value="__keep__">' + t('Loading models…') + '</option></select></label>' +
+      '<div class="bh-field"><span>' + t('Model') + '</span>' +
+        '<input name="bh-emodel-filter" id="bhEditModelFilter" type="search" autocomplete="off" spellcheck="false" hidden placeholder="' + t('Filter the list (e.g. flash, claude, free)…') + '" aria-label="' + t('Filter the list of models') + '">' +
+        '<select name="bh-emodel" id="bhEditModel" aria-label="' + t('Model') + '"><option value="__keep__">' + t('Loading models…') + '</option></select></div>' +
       '<label class="bh-field" id="bhEditModelOther" hidden><span>' + t('Model id, exactly as the provider names it') + '</span><input name="bh-emodel-other" type="text" maxlength="120" autocomplete="off" spellcheck="false" placeholder="' + t('E.g. MiniMax-M3.1-Flash') + '"></label>' +
       (VOICES.length ? '<div class="bh-field-row bh-voice-row"><label class="bh-field"><span>' + t('Voice (spoken replies)') + '</span><select name="bh-evoice">' + voiceOptionsHtml(modal.voice) + '</select></label>' +
         '<button type="button" class="bh-btn" data-bh-voice-test>▶ ' + t('Listen') + '</button></div>' : '') +
@@ -1322,7 +1343,11 @@
       orig: face, soulOriginal: null, voice: currentVoice });
     loadModels().then(function (groups) {
       var sel = document.getElementById('bhEditModel');
-      if (sel && modal && modal.type === 'edit') sel.innerHTML = modelOptionsHtml(bot, groups);
+      if (!sel || !modal || modal.type !== 'edit') return;
+      modal.modelGroups = groups;
+      sel.innerHTML = modelOptionsHtml(bot, groups);
+      var filter = document.getElementById('bhEditModelFilter');  // worth a filter box only for long lists
+      if (filter) filter.hidden = sel.options.length <= 25;
     }).catch(function () {
       var sel = document.getElementById('bhEditModel');
       if (sel) sel.innerHTML = modelOptionsHtml(bot, []);
@@ -1451,7 +1476,9 @@
   }
   var faceFrame = 0;
   function onInput(ev) {
-    var picker = ev.target.closest && ev.target.closest('#bhModal [name=bh-ecolor]');
+    var mfilter = ev.target.closest && ev.target.closest('#bhModal [name=bh-emodel-filter]');
+    if (mfilter && modal && modal.type === 'edit') { filterModels(mfilter.value); return; }
+    var picker =ev.target.closest && ev.target.closest('#bhModal [name=bh-ecolor]');
     if (picker && modal && modal.type === 'edit') {
       modal.color = picker.value;
       if (!faceFrame) faceFrame = requestAnimationFrame(function () { faceFrame = 0; if (modal && modal.type === 'edit') refreshFace(); });
@@ -1638,11 +1665,7 @@
   function onChange(ev) {
     var msel = ev.target.closest && ev.target.closest('#bhModal [name=bh-emodel]');
     if (msel) {
-      var box = document.getElementById('bhEditModelOther');
-      if (box) {
-        box.hidden = !/\|\|__other__$/.test(msel.value);
-        if (!box.hidden) { var inp = box.querySelector('input'); if (inp) inp.focus(); }
-      }
+      if (syncModelOther(msel)) { var inp = document.querySelector('#bhEditModelOther input'); if (inp) inp.focus(); }
       return;
     }
     var sel = ev.target.closest && ev.target.closest('#bhModal [name=bh-when]');
@@ -2002,6 +2025,8 @@
     'Loading models…': 'Chargement des modèles…',
     'Other {provider} model…': 'Autre modèle {provider}…',
     'custom endpoint': 'point d’accès perso',
+    'Filter the list (e.g. flash, claude, free)…': 'Filtrer la liste (ex. flash, claude, free)…',
+    'Filter the list of models': 'Filtrer la liste des modèles',
     'Model id, exactly as the provider names it': 'Identifiant du modèle, exactement comme chez le fournisseur',
     'E.g. MiniMax-M3.1-Flash': 'Ex. MiniMax-M3.1-Flash',
     'Type the model id, or pick a model in the list': 'Tape l’identifiant du modèle, ou choisis un modèle dans la liste',
